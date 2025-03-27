@@ -5,7 +5,7 @@ WORKDIR /app
 # 将项目中的文件复制到/app目录
 COPY . .
 RUN go mod download  # 下载Go依赖
-RUN CGO_ENABLED=0 GOOS=linux go build -o /wallpaper-api ./cmd/server  # 编译Go应用
+RUN CGO_ENABLED=0 GOOS=linux go build -o /wallpaper-api-v1 ./cmd/server  # 编译Go应用
 
 # 运行阶段：构建最小的运行时镜像
 FROM alpine:3.17
@@ -13,7 +13,7 @@ FROM alpine:3.17
 WORKDIR /app
 
 # 从builder阶段复制构建好的二进制文件
-COPY --from=builder /wallpaper-api /app/
+COPY --from=builder /wallpaper-api-v1 /app/
 
 # 复制配置文件和代码
 COPY ./configs/ /app/configs/

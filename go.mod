@@ -1,4 +1,4 @@
-module github.com/TXM983/wallpaper-api
+module github.com/TXM983/wallpaper-api-v1
 
 go 1.20
 

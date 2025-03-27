@@ -55,5 +55,5 @@ jobs:
           context: .  # 使用当前目录作为构建上下文
           file: ./Dockerfile  # 指定 Dockerfile 的路径
           push: true  # 设置为 true 表示推送到 Docker Hub
-          tags:  ${{ secrets.DOCKER_TAGS }}/wallpaper-api:latest  # 镜像的标签
+          tags:  ${{ secrets.DOCKER_TAGS }}/wallpaper-api-v1:latest  # 镜像的标签
 

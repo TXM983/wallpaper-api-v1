@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/TXM983/wallpaper-api/internal/logger"
+	"github.com/TXM983/wallpaper-api-v1/internal/logger"
 	"sync"
 	"time"
 
