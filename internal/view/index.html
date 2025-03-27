@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 文档 - 随机壁纸</title>
+    <link rel="shortcut icon" href="/v1/static/favicon.ico" type="image/x-icon">
+    <!-- Prism.js CDN -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/components/prism-json.min.js"></script>
+
+    <style>
+
+        @font-face {
+            font-family: HYTMR;
+            src: url(/v1/static/fonts/LWGX.woff2);
+            font-display: swap;
+        }
+
+        body {
+            font-family: HYTMR, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #43cfa0;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            border-right: 5px;
+            border-radius: 5px;
+        }
+
+        main {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 25px;
+        }
+
+        p {
+            font-size: 1.1em;
+            line-height: 1.6em;
+        }
+
+        .api-call {
+            background: #f9f9f9;
+            padding: 15px;
+            border-left: 5px solid #43cfa0;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        pre {
+            background: #2e2e2e;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 1em;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        code {
+            background: #333;
+            color: #ffeb3b;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .image-preview {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        #wallpaper-preview {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 10px;
+            background-attachment: local;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #f1f1f1;
+            margin-top: 40px;
+            font-size: 14px;
+        }
+
+        .upload-section {
+            max-width: 100%;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .drop-area {
+            border: 2px dashed #43cfa0;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease-in-out;
+        }
+
+        .drop-area:hover {
+            background: rgba(67, 207, 160, 0.1);
+        }
+
+        .file-label {
+            color: #43cfa0;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #change-wallpaper {
+            display: inline-block;
+            background-color: #43cfa0;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+        }
+
+        #change-wallpaper:hover {
+            background-color: #38b48e;
+        }
+
+        .button {
+            background-color: #43cfa0;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+
+        .button:hover {
+            background-color: #38b48e;
+        }
+
+        #preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .preview-item {
+            position: relative;
+            margin: 5px;
+        }
+
+        .preview-item img {
+            width: 100px;
+            height: 100px;
+            border-radius: 5px;
+            object-fit: cover;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 20px;
+            text-align: center;
+        }
+
+        #upload-result {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        /* 自定义 Select 样式 */
+        .custom-select-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 1em;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        select:focus {
+            border-color: #43cfa0; /* 焦点时的边框颜色 */
+            background-color: #fff; /* 焦点时的背景色 */
+            box-shadow: 0 0 5px rgba(67, 207, 160, 0.5);
+        }
+
+        select::-ms-expand {
+            display: none;
+        }
+
+        .custom-select-container::after {
+            content: '▼';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        select:hover {
+            border-color: #43cfa0;
+        }
+
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        随机壁纸 API 使用说明
+    </header>
+    <section>
+        <h2>1. 指定设备类型获取随机壁纸</h2>
+        <div class="api-call">
+            <p><strong>请求 URL：</strong> <code class="language-json">/wallpaper?type={device_type}</code></p>
+            <p><strong>请求参数：</strong></p>
+            <ul>
+                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code class="language-json">mobile</code>。</li>
+            </ul>
+            <h3>示例请求：</h3>
+            <pre><code class="language-json">GET /wallpaper?type=pc</code></pre>
+            <h3>示例响应：</h3>
+            <pre><code class="language-json">HTTP/1.1 302 Found
+Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
+        </div>
+
+        <h2>2. 指定设备类型和返回数据类型获取随机壁纸</h2>
+        <div class="api-call">
+            <p><strong>请求 URL：</strong> <code class="language-json">/wallpaper?type={device_type}&dataType={data_type}</code></p>
+            <p><strong>请求参数：</strong></p>
+            <ul>
+                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code class="language-json">mobile</code>。</li>
+                <li><strong>dataType</strong> - 数据类型，支持值：<code class="language-json">json</code> 或 <code class="language-json">url</code>。</li>
+            </ul>
+            <h3>示例请求：</h3>
+            <pre><code class="language-json">GET /wallpaper?type=pc&dataType=json</code></pre>
+            <h3>示例响应：</h3>
+            <pre><code class="language-json">{
+  "code": 200,
+  "status": "success",
+  "message": "Wallpaper URL retrieved successfully",
+  "data": "https://cdn.aimiliy.top/pc/2a48fbc5e3c3424fa79a1f6fa5f9ee40.webp"
+}</code></pre>
+            <h3>示例请求：</h3>
+            <pre><code class="language-json">GET /wallpaper?type=pc&dataType=url</code></pre>
+            <h3>示例响应：</h3>
+            <pre><code class="language-json">https://cdn.aimiliy.top/pc/random-wallpaper.webp</code></pre>
+        </div>
+
+        <h2>3. 刷新所有壁纸缓存</h2>
+        <div class="api-call">
+            <p><strong>请求 URL：</strong> <code class="language-json">/resetCache</code></p>
+            <p><strong>请求参数：无</strong></p>
+            <ul>
+            </ul>
+            <h3>示例请求：</h3>
+            <pre><code class="language-json">GET /resetCache</code></pre>
+            <h3>示例响应：</h3>
+            <pre><code class="language-json">{
+  "code": 200,
+  "status": "success",
+  "message": "Cache initialized successfully"
+}</code></pre>
+            <h3>示例请求：</h3>
+            <pre><code class="language-json">GET /wallpaper?type=pc&dataType=url</code></pre>
+            <h3>示例响应：</h3>
+            <pre><code class="language-json">http://your-cdn-url/pc/random-image.jpg</code></pre>
+        </div>
+
+        <h2>4. 根据设备类型刷新指定路径的壁纸缓存</h2>
+        <div class="api-call">
+            <p><strong>请求 URL：</strong><code class="language-json">/refreshCacheByDevice?type={device_type}</code></p>
+            <p><strong>请求参数：</strong></p>
+            <ul>
+                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code class="language-json">mobile</code>。</li>
+            </ul>
+            <h3>示例请求：</h3>
+            <pre><code class="language-json">GET /refreshCacheByDevice?type=pc</code></pre>
+            <h3>示例响应：</h3>
+            <pre><code class="language-json">{
+  "code": 200,
+  "status": "success",
+  "message": "Cache for device type 'pc' refreshed successfully"
+}</code></pre>
+        </div>
+
+        <h2>5. 上传壁纸文件（同步新增对应壁纸缓存)</h2>
+        <div class="api-call">
+            <p><strong>请求 URL：</strong> <code class="language-json">/upload</code></p>
+            <p><strong>请求方法：</strong> <code class="language-json">POST</code></p>
+            <p><strong>请求参数：</strong></p>
+            <ul>
+                <li><strong>files</strong> - 需要上传的壁纸文件（支持多个文件）</li>
+                <li><strong>deviceType</strong> - 设备类型，支持 <code class="language-json">pc</code> 或 <code class="language-json">mobile</code></li>
+            </ul>
+
+            <h3>示例请求：</h3>
+            <pre><code class="language-json">POST /upload</code></pre>
+            <h3>示例响应：</h3>
+            <pre><code class="language-json">{
+  "code": 200,
+  "status": "success",
+  "message": "Files uploaded successfully",
+  "data": [
+    "https://cdn.aimiliy.top/pc/uploaded-image1.jpg",
+    "https://cdn.aimiliy.top/mobile/uploaded-image2.jpg"
+  ]
+}</code></pre>
+        </div>
+    </section>
+
+    <section class="upload-section">
+        <h3>上传壁纸文件（测试使用，请勿随意上传不符合的图片）</h3>
+        <form id="upload-form" enctype="multipart/form-data">
+            <label for="deviceType">设备类型：</label>
+            <div class="custom-select-container">
+                <select id="deviceType">
+                    <option value="pc">pc</option>
+                    <option value="mobile">mobile</option>
+                </select>
+            </div>
+
+            <!-- 拖拽 & 点击上传区域 -->
+            <div id="drop-area" class="drop-area">
+                <p>拖拽图片到此处或 <span class="file-label">点击选择文件</span></p>
+                <input type="file" id="file-input" multiple accept="image/*" hidden>
+            </div>
+
+            <button type="button" class="button" id="upload-button">上传</button>
+        </form>
+
+        <!-- 预览区域 -->
+        <div id="preview-container"></div>
+
+        <div id="upload-result"></div>
+    </section>
+
+
+    <section class="image-preview">
+        <h2>预览壁纸API</h2>
+        <p>下方展示通过 API 获取的随机壁纸：</p>
+        <div id="wallpaper-preview"></div>
+        <div class="button" id="change-wallpaper">换一换</div>
+    </section>
+</main>
+
+<footer>
+    <p>&copy; 2025 Wallpaper API Documentation</p>
+    <p>Author: MuXiaoChen🍊</p>
+</footer>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const fileInput = document.getElementById("file-input");
+        const dropArea = document.getElementById("drop-area");
+        const previewContainer = document.getElementById("preview-container");
+        const uploadButton = document.getElementById("upload-button");
+
+        let selectedFiles = [];
+
+        // 触发文件选择
+        dropArea.addEventListener("click", () => fileInput.click());
+
+        // 监听文件选择
+        fileInput.addEventListener("change", handleFiles);
+
+        // 拖拽文件到区域
+        dropArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropArea.style.background = "rgba(67, 207, 160, 0.2)";
+        });
+
+        dropArea.addEventListener("dragleave", () => {
+            dropArea.style.background = "transparent";
+        });
+
+        dropArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropArea.style.background = "transparent";
+            handleFiles(e);
+        });
+
+        // 处理文件
+        function handleFiles(event) {
+            const files = event.target.files || event.dataTransfer.files;
+
+            for (let file of files) {
+                if (!file.type.startsWith("image/")) continue;
+
+                selectedFiles.push(file);
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    const div = document.createElement("div");
+                    div.classList.add("preview-item");
+
+                    div.innerHTML = `
+                    <img src="${e.target.result}" alt="preview">
+                    <button class="remove-btn">×</button>
+                `;
+
+                    previewContainer.appendChild(div);
+
+                    div.querySelector(".remove-btn").addEventListener("click", function () {
+                        const index = selectedFiles.indexOf(file);
+                        if (index > -1) {
+                            selectedFiles.splice(index, 1);
+                        }
+                        div.remove();
+                    });
+                };
+
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // 处理上传
+        uploadButton.addEventListener("click", debounce(async function () {
+            if (selectedFiles.length === 0) {
+                alert("请至少选择一张图片");
+                return;
+            }
+
+            const formData = new FormData();
+            const deviceType = document.getElementById("deviceType").value;
+
+            formData.append("deviceType", deviceType);
+            selectedFiles.forEach((file) => formData.append("files", file));
+
+            try {
+                const response = await fetch("/v1/upload", { // 注：v1为代理地址，实际情况请自行修改
+                    method: "POST",
+                    body: formData,
+                });
+
+                // 如果响应状态不是 2xx，则抛出错误
+                if (!response.ok) {
+                    previewContainer.innerHTML = "";  // 清空预览容器
+                    selectedFiles = [];  // 清空已选择的文件
+                    fileInput.value = "";  // 清空文件选择框
+                    throw new Error(result.message || '上传失败');
+                }
+                const result = await response.json();
+                document.getElementById("upload-result").innerHTML = `
+    <p style="color:green;">上传成功！</p>
+   <pre style="color:green; white-space: pre-wrap;" class="language-json">
+   <code class="language-json">
+   ${JSON.stringify(result, null, 2)}
+   </code>
+   </pre>
+`;
+                previewContainer.innerHTML = "";  // 清空预览容器
+                selectedFiles = [];  // 清空已选择的文件
+                fileInput.value = "";  // 清空文件选择框
+
+            } catch (error) {
+                document.getElementById("upload-result").innerHTML = `<p style="color:red;">请求错误：</p>
+<pre style="color:red; white-space: pre-wrap;" class="language-json">
+${error.message}
+</pre>`;
+                previewContainer.innerHTML = "";  // 清空预览容器
+                selectedFiles = [];  // 清空已选择的文件
+                fileInput.value = "";  // 清空文件选择框
+            }
+        }, 3e2));
+    });
+
+    const debounce = (fn, delay) => {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout); // 清除上次的定时器
+            timeout = setTimeout(() => {
+                fn(...args); // 在延迟后执行目标函数
+            }, delay);
+        };
+    }
+
+    async function loadWallpaper() {
+        try {
+            const response = await fetch('/v1/wallpaper?type=pc&dataType=json');  // 注：v1为代理地址，实际情况请自行修改
+            const data = await response.json();
+            if (data.data) {
+                document.getElementById('wallpaper-preview').style.backgroundImage = `url(${data.data})`;
+            }
+        } catch (error) {
+            console.error("壁纸加载失败：", error);
+        }
+    }
+
+    window.onload = loadWallpaper;
+
+    document.getElementById('change-wallpaper').addEventListener('click', debounce(loadWallpaper, 3e2));
+</script>
+</body>
+</html>

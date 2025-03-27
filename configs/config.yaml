@@ -1,0 +1,18 @@
+server:
+  port: 6523
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""  # Redis 密码，如果没有可以留空
+  db: 0
+  pool_size: 100
+  min_idle_conns: 20
+
+cdn:
+  base_url: "" # 你的oss访问地址
+
+oss:
+  endpoint: ""  # OSS 区域 Endpoint
+  access_key_id: ""           #  Access Key ID
+  access_key_secret: ""   #  Access Key Secret
+  bucket: ""                    # OSS 存储桶名称
