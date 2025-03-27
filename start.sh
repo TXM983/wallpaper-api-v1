@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # 设置应用程序的名称
-APP_NAME="wallpaper-api"
+APP_NAME="wallpaper-api-v1"
 
 # 检查进程是否存在
 pid=$(pgrep -f $APP_NAME)
