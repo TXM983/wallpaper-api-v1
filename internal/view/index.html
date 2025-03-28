@@ -210,10 +210,13 @@
         .custom-select-container {
             position: relative;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         select {
-            width: 100%;
+            width: 80%;
             padding: 12px 20px;
             font-size: 1em;
             border: 1px solid #ddd;
@@ -309,10 +312,6 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
   "status": "success",
   "message": "Cache initialized successfully"
 }</code></pre>
-            <h3>示例请求：</h3>
-            <pre><code class="language-json">GET /wallpaper?type=pc&dataType=url</code></pre>
-            <h3>示例响应：</h3>
-            <pre><code class="language-json">http://your-cdn-url/pc/random-image.jpg</code></pre>
         </div>
 
         <h2>4. 根据设备类型刷新指定路径的壁纸缓存</h2>
@@ -360,8 +359,8 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
     <section class="upload-section">
         <h3>上传壁纸文件（测试使用，请勿随意上传不符合的图片）</h3>
         <form id="upload-form" enctype="multipart/form-data">
-            <label for="deviceType">设备类型：</label>
             <div class="custom-select-container">
+                <label for="deviceType">设备类型：</label>
                 <select id="deviceType">
                     <option value="pc">pc</option>
                     <option value="mobile">mobile</option>
