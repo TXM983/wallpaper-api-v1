@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API 文档 - 随机壁纸</title>
-    <link rel="shortcut icon" href="/v1/static/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
     <!-- Prism.js CDN -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/prism.min.js"></script>
@@ -14,7 +14,7 @@
 
         @font-face {
             font-family: HYTMR;
-            src: url(/v1/static/fonts/LWGX.woff2);
+            src: url(/static/fonts/LWGX.woff2);
             font-display: swap;
         }
 
@@ -475,7 +475,7 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
             selectedFiles.forEach((file) => formData.append("files", file));
 
             try {
-                const response = await fetch("/v1/upload", { // 注：v1为代理地址，实际情况请自行修改
+                const response = await fetch("/upload", {
                     method: "POST",
                     body: formData,
                 });
@@ -524,7 +524,7 @@ ${error.message}
 
     async function loadWallpaper() {
         try {
-            const response = await fetch('/v1/wallpaper?type=pc&dataType=json');  // 注：v1为代理地址，实际情况请自行修改
+            const response = await fetch('/wallpaper?type=pc&dataType=json');
             const data = await response.json();
             if (data.data) {
                 document.getElementById('wallpaper-preview').style.backgroundImage = `url(${data.data})`;
