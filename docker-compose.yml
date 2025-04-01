@@ -34,3 +34,4 @@ services:
       - OSS_ACCESS_KEY_SECRET=########    # Access Key Secret
       - OSS_BUCKET=########    # OSS 存储桶名称
       - LOG_FILE_PATH=#####  # 日志文件路径（非必填，需同步修改wallpaper-api挂载日志目录）
+      - PASSWORD=###### # 上传删除接口密码
