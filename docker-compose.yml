@@ -13,7 +13,7 @@ services:
 
   # wallpaper-api 服务
   wallpaper-api:
-    image: txm123/wallpaper-api:latest  # 你的 Docker Hub 镜像
+    image: txm123/wallpaper-api-v1:latest  # 你的 Docker Hub 镜像
     container_name: wallpaper-api
     restart: always
     ports:

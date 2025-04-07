@@ -69,7 +69,7 @@ services:
 
   # wallpaper-api 服务
   wallpaper-api:
-    image: txm123/wallpaper-api:latest 
+    image: txm123/wallpaper-api-v1:latest  # 你的 Docker Hub 镜像
     container_name: wallpaper-api
     restart: always
     ports:
@@ -80,7 +80,7 @@ services:
       - GIN_MODE=release  # 设定 Gin 运行环境
       - SERVER_PORT=######## # 项目启动端口 同步修改容器内映射端口
       - REDIS_ADDR=redis:6379  # 使用 Redis 服务的容器名作为 Redis 地址
-      - REDIS_PASSWORD=######  # Redis 默认没有密码
+      - REDIS_PASSWORD=  # Redis 默认没有密码
       - REDIS_DB=0     # Redis 数据库的编号
       - REDIS_POOL_SIZE=100   # 连接池的最大连接数
       - REDIS_MIN_IDLE_CONNS=20  # 连接池中最小空闲连接数
@@ -90,6 +90,7 @@ services:
       - OSS_ACCESS_KEY_SECRET=########    # Access Key Secret
       - OSS_BUCKET=########    # OSS 存储桶名称
       - LOG_FILE_PATH=#####  # 日志文件路径（非必填，需同步修改wallpaper-api挂载日志目录）
+      - PASSWORD=###### # 上传删除接口密码
 ```
 
 ## 异步同步机制
