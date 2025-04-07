@@ -4,6 +4,24 @@
 
 <h1 align="center">Wallpaper-api-v1</h1>
 
+<p align="center">
+  <a href="https://github.com/TXM983/wallpaper-api-v1/releases">
+    <img src="https://neko.aimiliy.top/v1/static/favicon.ico" alt="GitHub Release" />
+  </a>
+  <a href="https://github.com/TXM983/wallpaper-api-v1/blob/master/LICENSE">
+    <img src="https://neko.aimiliy.top/v1/static/favicon.ico" alt="MIT License" />
+  </a>
+  <!-- Golang Badge -->
+  <a href="https://golang.org/">
+    <img src="https://img.shields.io/badge/Go-1.18-blue" alt="Golang" />
+  </a>
+  <!-- Redis Badge -->
+  <a href="https://redis.io/">
+    <img src="https://img.shields.io/badge/Redis-6.2-red" alt="Redis" />
+  </a>
+</p>
+
+
 ## 技术架构图
 
 ```
