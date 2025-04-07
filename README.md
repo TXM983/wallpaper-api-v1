@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://neko.aimiliy.top/v1/favicon.ico" alt="Wallpaper-api-v1 Logo" width="100">
+  <img src="https://neko.aimiliy.top/v1/static/favicon.ico" alt="Wallpaper-api-v1 Logo" width="100">
 </p>
 
 <h1 align="center">Wallpaper-api-v1</h1>
