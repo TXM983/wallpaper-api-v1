@@ -5,12 +5,12 @@
 <h1 align="center">Wallpaper-api-v1</h1>
 
 <p align="center">
-  <a href="https://github.com/TXM983/wallpaper-api-v1/releases">
-    <img src="https://neko.aimiliy.top/v1/static/favicon.ico" alt="GitHub Release" />
-  </a>
-  <a href="https://github.com/TXM983/wallpaper-api-v1/blob/master/LICENSE">
-    <img src="https://neko.aimiliy.top/v1/static/favicon.ico" alt="MIT License" />
-  </a>
+<a href="https://github.com/TXM983/wallpaper-api-v1/releases">
+  <img src="https://img.shields.io/github/v/release/TXM983/wallpaper-api-v1?include_prereleases&label=Release" alt="GitHub Release" />
+</a>
+<a href="https://github.com/TXM983/wallpaper-api-v1/blob/master/LICENSE">
+  <img src="https://img.shields.io/github/license/TXM983/wallpaper-api-v1?label=License" alt="MIT License" />
+</a>
   <!-- Golang Badge -->
   <a href="https://golang.org/">
     <img src="https://img.shields.io/badge/Go-1.18-blue" alt="Golang" />
