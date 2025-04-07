@@ -253,9 +253,151 @@
             border-color: #43cfa0;
         }
 
+        .delete-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 18px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .wallpaper-item {
+            position: relative;
+            display: inline-block;
+            margin: 20px;
+        }
+
+        .wallpaper-item img {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        #confirm-delete, #confirm-upload {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            z-index: 99;
+        }
+
+        .wallpaper-section {
+            max-width: 100%;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #delete-password, #upload-password {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease-in-out;
+            outline: none;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: calc(100% - 20px);
+        }
+
+        .modal-open {
+            overflow: hidden;
+            height: 100vh;
+        }
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px; /* 按钮之间的间距 */
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #43cfa0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .pagination button:hover {
+            background-color: #38b48e;
+        }
+
+        .pagination button:disabled {
+            background-color: #ddd;
+            color: #666;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #page-info {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #web_bg{
+            position: fixed;
+            z-index: -999;
+            width: 100%;
+            height: 100%;
+            background-attachment: local;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: rgba(73,177,245,.2);
+            border-radius: 2em
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: rgb(57, 197, 187);
+            background-image: -webkit-linear-gradient(45deg,rgba(255,255,255,.4) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.4) 50%,rgba(255,255,255,.4) 75%,transparent 75%,transparent);
+            border-radius: 2em
+        }
+
+        ::-webkit-scrollbar-corner {
+            background-color: transparent
+        }
+
+        ::-moz-selection {
+            color: #fff;
+            background-color: rgb(57, 197, 187);
+        }
+
+        ::selection {
+            background: rgb(57, 197, 187);
+            color: #f7f7f7
+        }
     </style>
 </head>
 <body>
+<div id="web_bg"></div>
 <main>
     <header>
         随机壁纸 API 使用说明
@@ -266,7 +408,9 @@
             <p><strong>请求 URL：</strong> <code class="language-json">/wallpaper?type={device_type}</code></p>
             <p><strong>请求参数：</strong></p>
             <ul>
-                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code class="language-json">mobile</code>。</li>
+                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code
+                        class="language-json">mobile</code>。
+                </li>
             </ul>
             <h3>示例请求：</h3>
             <pre><code class="language-json">GET /wallpaper?type=pc</code></pre>
@@ -277,11 +421,16 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
 
         <h2>2. 指定设备类型和返回数据类型获取随机壁纸</h2>
         <div class="api-call">
-            <p><strong>请求 URL：</strong> <code class="language-json">/wallpaper?type={device_type}&dataType={data_type}</code></p>
+            <p><strong>请求 URL：</strong> <code
+                    class="language-json">/wallpaper?type={device_type}&dataType={data_type}</code></p>
             <p><strong>请求参数：</strong></p>
             <ul>
-                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code class="language-json">mobile</code>。</li>
-                <li><strong>dataType</strong> - 数据类型，支持值：<code class="language-json">json</code> 或 <code class="language-json">url</code>。</li>
+                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code
+                        class="language-json">mobile</code>。
+                </li>
+                <li><strong>dataType</strong> - 数据类型，支持值：<code class="language-json">json</code> 或 <code
+                        class="language-json">url</code>。
+                </li>
             </ul>
             <h3>示例请求：</h3>
             <pre><code class="language-json">GET /wallpaper?type=pc&dataType=json</code></pre>
@@ -319,7 +468,9 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
             <p><strong>请求 URL：</strong><code class="language-json">/refreshCacheByDevice?type={device_type}</code></p>
             <p><strong>请求参数：</strong></p>
             <ul>
-                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code class="language-json">mobile</code>。</li>
+                <li><strong>type</strong> - 设备类型，支持值：<code class="language-json">pc</code> 或 <code
+                        class="language-json">mobile</code>。
+                </li>
             </ul>
             <h3>示例请求：</h3>
             <pre><code class="language-json">GET /refreshCacheByDevice?type=pc</code></pre>
@@ -338,7 +489,9 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
             <p><strong>请求参数：</strong></p>
             <ul>
                 <li><strong>files</strong> - 需要上传的壁纸文件（支持多个文件）</li>
-                <li><strong>deviceType</strong> - 设备类型，支持 <code class="language-json">pc</code> 或 <code class="language-json">mobile</code></li>
+                <li><strong>deviceType</strong> - 设备类型，支持 <code class="language-json">pc</code> 或 <code
+                        class="language-json">mobile</code></li>
+                <li><strong>password</strong> - 上传密码</li>
             </ul>
 
             <h3>示例请求：</h3>
@@ -382,6 +535,42 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
         <div id="upload-result"></div>
     </section>
 
+    <div id="confirm-delete" style="display: none;">
+        <p>你确定要删除这张壁纸吗？</p>
+        <input type="password" id="delete-password" placeholder="请输入密码">
+        <div class="button" id="confirm-delete-btn">确认删除</div>
+        <div class="button" id="cancel-delete-btn">取消</div>
+    </div>
+
+    <div id="confirm-upload" style="display: none;">
+        <p>请输入上传密码</p>
+        <input type="password" id="upload-password" placeholder="请输入密码">
+        <div class="button" id="confirm-upload-btn">确认上传</div>
+        <div class="button" id="cancel-upload-btn">取消</div>
+    </div>
+
+
+    <section class="wallpaper-section">
+        <h3>查询指定路径壁纸列表（测试使用，请勿随意删除）</h3>
+        <div class="custom-select-container">
+            <label for="deviceTypeSelect">选择设备类型：</label>
+            <select id="deviceTypeSelect">
+                <option value="pc">pc</option>
+                <option value="mobile">mobile</option>
+            </select>
+        </div>
+
+        <div id="wallpaper-list">
+            <!-- 壁纸会动态显示在这里 -->
+        </div>
+
+        <div class="pagination">
+            <button id="prev-page" disabled>上一页</button>
+            <span id="page-info"></span>
+            <button id="next-page" disabled>下一页</button>
+        </div>
+    </section>
+
 
     <section class="image-preview">
         <h2>预览壁纸API</h2>
@@ -402,6 +591,10 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
         const dropArea = document.getElementById("drop-area");
         const previewContainer = document.getElementById("preview-container");
         const uploadButton = document.getElementById("upload-button");
+        const uploadPasswordModal = document.getElementById("confirm-upload");
+        const confirmUploadBtn = document.getElementById("confirm-upload-btn");
+        const cancelUploadBtn = document.getElementById("cancel-upload-btn");
+        const uploadPasswordInput = document.getElementById("upload-password");
 
         let selectedFiles = [];
 
@@ -461,55 +654,243 @@ Location: http://your-cdn-url/pc/random-image.jpg</code></pre>
             }
         }
 
-        // 处理上传
-        uploadButton.addEventListener("click", debounce(async function () {
+
+        // 显示密码输入弹窗
+        uploadButton.addEventListener("click", function () {
             if (selectedFiles.length === 0) {
                 alert("请至少选择一张图片");
                 return;
             }
+            uploadPasswordModal.style.display = "block"; // 显示密码输入框
+            document.body.classList.add("modal-open");  // 禁止滚动
+        });
+
+        // 取消上传
+        cancelUploadBtn.addEventListener("click", function () {
+            uploadPasswordModal.style.display = "none"; // 关闭密码输入框
+            uploadPasswordInput.value = ""; // 清空密码输入框
+            document.body.classList.remove("modal-open");  // 解除滚动
+        });
+        // 处理上传
+        confirmUploadBtn.addEventListener("click", debounce(async function () {
+            const password = uploadPasswordInput.value.trim();
+            const storage = localStorage.getItem("password-upload")
+            if (!password && !storage) {
+                alert("请输入密码！");
+                return;
+            }
+            uploadPasswordModal.style.display = "none"; // 关闭弹窗
+            uploadPasswordInput.value = ""; // 清空密码框
+            document.body.classList.remove("modal-open");  // 解除滚动
 
             const formData = new FormData();
             const deviceType = document.getElementById("deviceType").value;
 
             formData.append("deviceType", deviceType);
+            formData.append("password", !password ? storage : password); // 将密码添加到请求参数
             selectedFiles.forEach((file) => formData.append("files", file));
 
-            try {
-                const response = await fetch("/upload", {
-                    method: "POST",
-                    body: formData,
-                });
 
-                // 如果响应状态不是 2xx，则抛出错误
-                if (!response.ok) {
-                    previewContainer.innerHTML = "";  // 清空预览容器
-                    selectedFiles = [];  // 清空已选择的文件
-                    fileInput.value = "";  // 清空文件选择框
-                    throw new Error(result.message || '上传失败');
-                }
-                const result = await response.json();
-                document.getElementById("upload-result").innerHTML = `
+            await fetch("/upload", {
+                method: "POST",
+                body: formData,
+            }).then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        document.getElementById("upload-result").innerHTML = `
     <p style="color:green;">上传成功！</p>
-   <pre style="color:green; white-space: pre-wrap;" class="language-json">
+   <pre>
    <code class="language-json">
-   ${JSON.stringify(result, null, 2)}
+      ${Prism.util.encode(JSON.stringify(data, null, 2))}
    </code>
    </pre>
 `;
-                previewContainer.innerHTML = "";  // 清空预览容器
-                selectedFiles = [];  // 清空已选择的文件
-                fileInput.value = "";  // 清空文件选择框
+                        Prism.highlightAll();
+                        localStorage.setItem("password-upload", !password ? storage : password);
+                        fetchWallpapers(deviceTypeSelect.value);
+                    } else {
+                        document.getElementById("upload-result").innerHTML = `
+    <p style="color:red;">上传失败！</p>
+   <pre>
+   <code class="language-json">
+      ${Prism.util.encode(JSON.stringify(data, null, 2))}
+   </code>
+   </pre>
+`;
+                        Prism.highlightAll();
+                    }
+                    previewContainer.innerHTML = "";  // 清空预览容器
+                    selectedFiles = [];  // 清空已选择的文件
+                    fileInput.value = "";  // 清空文件选择框
 
-            } catch (error) {
-                document.getElementById("upload-result").innerHTML = `<p style="color:red;">请求错误：</p>
+                })
+                .catch(error => {
+                    document.getElementById("upload-result").innerHTML = `<p style="color:red;">请求错误：</p>
 <pre style="color:red; white-space: pre-wrap;" class="language-json">
 ${error.message}
 </pre>`;
-                previewContainer.innerHTML = "";  // 清空预览容器
-                selectedFiles = [];  // 清空已选择的文件
-                fileInput.value = "";  // 清空文件选择框
-            }
+                    previewContainer.innerHTML = "";  // 清空预览容器
+                    selectedFiles = [];  // 清空已选择的文件
+                    fileInput.value = "";  // 清空文件选择框
+                });
+
         }, 3e2));
+
+
+        const deviceTypeSelect = document.getElementById("deviceTypeSelect");
+        const wallpaperList = document.getElementById("wallpaper-list");
+        const confirmDeleteModal = document.getElementById("confirm-delete");
+        const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
+        const cancelDeleteBtn = document.getElementById("cancel-delete-btn");
+        const deletePasswordInput = document.getElementById("delete-password");
+        const prevPageBtn = document.getElementById("prev-page");
+        const nextPageBtn = document.getElementById("next-page");
+        const pageInfo = document.getElementById("page-info");
+
+        let wallpaperToDelete = null;
+        let wallpapers = [];
+        let currentPage = 1;
+        const itemsPerPage = 12;
+
+        // 监听设备类型选择变化，查询并展示对应壁纸
+        deviceTypeSelect.addEventListener("change", function () {
+            fetchWallpapers(deviceTypeSelect.value);
+        });
+
+        // 初始化加载默认设备类型的壁纸
+        fetchWallpapers(deviceTypeSelect.value);
+
+        // 查询并展示指定设备类型下的所有壁纸
+        function fetchWallpapers(deviceType) {
+            fetch(`/selectImages?deviceType=${deviceType}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        wallpapers = data.data;
+                        currentPage = 1; // 每次切换设备类型时重置页码
+                        displayWallpapers();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching wallpapers:", error);
+                });
+        }
+
+        // 渲染分页壁纸
+        function displayWallpapers() {
+            wallpaperList.innerHTML = "";
+
+            if (wallpapers.length === 0) {
+                wallpaperList.innerHTML = "<p>没有找到任何壁纸。</p>";
+                pageInfo.textContent = "";
+                prevPageBtn.disabled = true;
+                nextPageBtn.disabled = true;
+                return;
+            }
+
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const paginatedWallpapers = wallpapers.slice(start, end);
+
+            paginatedWallpapers.forEach(wallpaper => {
+                const wallpaperItem = document.createElement("div");
+                wallpaperItem.classList.add("wallpaper-item");
+
+                const image = document.createElement("img");
+                image.src = wallpaper;
+                image.alt = "Wallpaper";
+
+                const deleteButton = document.createElement("button");
+                deleteButton.classList.add("delete-button");
+                deleteButton.textContent = "×";
+
+                // 绑定删除按钮事件
+                deleteButton.addEventListener("click", function () {
+                    wallpaperToDelete = wallpaper.split('/').pop();
+                    confirmDeleteModal.style.display = "block";
+                    deletePasswordInput.value = "";
+                    document.body.classList.add("modal-open");
+                });
+
+                wallpaperItem.appendChild(image);
+                wallpaperItem.appendChild(deleteButton);
+                wallpaperList.appendChild(wallpaperItem);
+            });
+
+            // 更新分页信息
+            pageInfo.textContent = `第 ${currentPage} 页 / 共 ${Math.ceil(wallpapers.length / itemsPerPage)} 页`;
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === Math.ceil(wallpapers.length / itemsPerPage);
+        }
+
+        // 处理分页按钮
+        document.getElementById("prev-page").addEventListener("click", function () {
+            if (currentPage > 1) {
+                currentPage--;
+                displayWallpapers();
+            }
+        });
+
+        document.getElementById("next-page").addEventListener("click", function () {
+            if (currentPage < Math.ceil(wallpapers.length / itemsPerPage)) {
+                currentPage++;
+                displayWallpapers();
+            }
+        });
+
+        // 确认删除壁纸
+        confirmDeleteBtn.addEventListener("click", function () {
+            if (!wallpaperToDelete) return;
+
+            const deviceType = deviceTypeSelect.value;
+            const password = deletePasswordInput.value.trim();
+            const passwordStorage = localStorage.getItem("password");
+
+            if (!password && !passwordStorage) {
+                alert("请输入密码！");
+                return;
+            }
+
+            deleteWallpaper(deviceType, wallpaperToDelete, password, passwordStorage);
+            confirmDeleteModal.style.display = "none";
+            document.body.classList.remove("modal-open");
+        });
+
+        // 取消删除
+        cancelDeleteBtn.addEventListener("click", function () {
+            confirmDeleteModal.style.display = "none"; // 关闭确认框
+            document.body.classList.remove("modal-open");  // 禁止滚动
+        });
+
+        // 调用删除壁纸接口
+        function deleteWallpaper(deviceType, fileName, password, passwordStorage) {
+            const param = {
+                deviceType: deviceType,
+                fileName: fileName,
+                password: password || passwordStorage
+            }
+            fetch(`/delete`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(param)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        alert("壁纸已删除！");
+                        localStorage.setItem("password", password || passwordStorage);
+                        fetchWallpapers(deviceType); // 刷新壁纸列表
+                    } else {
+                        alert(data.message);
+                    }
+                }).catch(error => {
+                console.error("Error deleting wallpaper:", error);
+            });
+        }
     });
 
     const debounce = (fn, delay) => {
@@ -528,6 +909,7 @@ ${error.message}
             const data = await response.json();
             if (data.data) {
                 document.getElementById('wallpaper-preview').style.backgroundImage = `url(${data.data})`;
+                document.getElementById('web_bg').style.backgroundImage = `url(${data.data})`;
             }
         } catch (error) {
             console.error("壁纸加载失败：", error);

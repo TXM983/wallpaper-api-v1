@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Log 全局日志实例
@@ -24,7 +25,6 @@ func Init() {
 	// 创建日志文件目录
 	err := os.MkdirAll(filepath.Dir(logFilePath), 0755)
 	if err != nil {
-		// 如果目录创建失败，打印错误并退出
 		fmt.Printf("Failed to create log directory: %v\n", err)
 		os.Exit(1)
 	}
@@ -38,26 +38,47 @@ func Init() {
 		Compress:   true,        // 启用日志压缩
 	})
 
-	// 设置日志格式（选择合适的格式：Text 或 JSON）
+	// 设置日志格式
 	Log.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true, // 启用完整的时间戳
+		FullTimestamp:   true,                  // 启用完整时间戳
+		TimestampFormat: "2006-01-02 15:04:05", // 时间格式化
 	})
 
-	// 设置日志级别，默认设置为 DebugLevel
+	// 设置日志级别，默认 DebugLevel
 	Log.SetLevel(logrus.DebugLevel)
+
+	// 使用 Hook 让 logrus 使用 UTC+8
+	Log.AddHook(&localTimeHook{})
 }
 
-// LogError 记录错误级别日志，支持动态参数
+// localTimeHook 自定义 Hook，强制转换日志时间为北京时间
+type localTimeHook struct{}
+
+func (h *localTimeHook) Levels() []logrus.Level {
+	return logrus.AllLevels
+}
+
+func (h *localTimeHook) Fire(entry *logrus.Entry) error {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		// 兜底方案：如果无法加载 "Asia/Shanghai"，使用固定时区
+		loc = time.FixedZone("CST", 8*60*60) // CST (China Standard Time) UTC+8
+	}
+	entry.Time = entry.Time.In(loc)
+	return nil
+}
+
+// LogError 记录错误级别日志
 func LogError(format string, args ...interface{}) {
 	Log.Errorf(format, args...)
 }
 
-// LogInfo 记录信息级别日志，支持动态参数
+// LogInfo 记录信息级别日志
 func LogInfo(format string, args ...interface{}) {
 	Log.Infof(format, args...)
 }
 
-// LogDebug 记录调试级别日志，支持动态参数
+// LogDebug 记录调试级别日志
 func LogDebug(format string, args ...interface{}) {
 	Log.Debugf(format, args...)
 }

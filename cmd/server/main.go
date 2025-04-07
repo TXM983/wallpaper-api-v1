@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/TXM983/wallpaper-api-v1/internal/config"
 	"github.com/TXM983/wallpaper-api-v1/internal/logger"
@@ -43,7 +44,7 @@ func main() {
 	initOSS()
 
 	// 启动后台清理任务
-	middleware.InitRateLimiterCleanup()
+	middleware.InitRateLimiterCleanup(30 * time.Minute)
 
 	// **确保 Redis 和 OSS 初始化成功**
 	if rdb == nil {
@@ -369,6 +370,12 @@ func setupRouter() *gin.Engine {
 	// 图片上传接口
 	r.POST("/upload", middleware.RateLimit(2), uploadWallpapers)
 
+	// 图片删除接口
+	r.GET("/delete", middleware.RateLimit(2), deleteWallpaper)
+
+	// 查询指定deviceType下的所有图片
+	r.GET("/selectImages", middleware.RateLimit(2), getWallpapers)
+
 	return r
 }
 
@@ -427,6 +434,12 @@ func handleWallpaper(c *gin.Context) {
 func uploadWallpapers(c *gin.Context) {
 
 	deviceType := c.PostForm("deviceType") // 额外的参数，判断返回格式
+	password := c.PostForm("password")     // 上传图片时需要验证密码
+
+	if password != appConfig.INDEX.Password {
+		utils.ErrorResponse(c, 400, "invalid password", "密码错误，请输入正确的密码")
+		return
+	}
 
 	// 校验设备类型是否合法
 	if !service.ValidateDeviceType(deviceType) {
@@ -480,4 +493,78 @@ func uploadWallpapers(c *gin.Context) {
 
 	// 返回上传成功的文件URL
 	utils.SuccessResponse(c, "Files uploaded successfully", uploadedFiles)
+}
+
+// 删除指定 deviceType 和 图片名称的壁纸接口
+func deleteWallpaper(c *gin.Context) {
+	// Define request structure
+	type DeleteWallpaperRequest struct {
+		DeviceType string `json:"deviceType" binding:"required"`
+		FileName   string `json:"fileName" binding:"required"`
+		Password   string `json:"password" binding:"required"`
+	}
+
+	var req DeleteWallpaperRequest
+
+	// Parse and validate request body
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, 400, "invalid parameters", "Invalid request parameters. Please check deviceType, fileName, and password.")
+		return
+	}
+
+	// Password check (hash comparison recommended)
+	if req.Password != appConfig.INDEX.Password {
+		utils.ErrorResponse(c, 401, "invalid password", "Authentication failed. Incorrect password.")
+		return
+	}
+
+	// Validate device type
+	if !service.ValidateDeviceType(req.DeviceType) {
+		logger.LogError(fmt.Sprintf("Invalid device type '%s' provided in request", req.DeviceType))
+		utils.ErrorResponse(c, 400, "invalid device type", fmt.Sprintf("Device type '%s' is not supported.", req.DeviceType))
+		return
+	}
+
+	// Delete from OSS
+	if err := service.DeleteFromOSS(req.FileName, req.DeviceType, bucket); err != nil {
+		utils.ErrorResponse(c, 500, "delete error", fmt.Sprintf("Failed to delete '%s' from OSS: %v", req.FileName, err))
+		return
+	}
+
+	// Remove from wallpaper cache
+	if err := service.RemoveFromWallpaperCache(req.FileName, rdb, req.DeviceType); err != nil {
+		utils.ErrorResponse(c, 500, "cache update error", fmt.Sprintf("Failed to remove '%s' from wallpaper cache: %v", req.FileName, err))
+		return
+	}
+
+	// Remove from random wallpaper cache
+	if err := service.RemoveFromRandomWallpaperCache(req.FileName, rdb, req.DeviceType); err != nil {
+		utils.ErrorResponse(c, 500, "random cache update error", fmt.Sprintf("Failed to remove '%s' from random wallpaper cache: %v", req.FileName, err))
+		return
+	}
+
+	// 返回删除成功的响应
+	utils.SuccessResponse(c, "Image deleted successfully", nil)
+}
+
+// 查询壁纸的接口
+func getWallpapers(c *gin.Context) {
+	deviceType := c.Query("deviceType") // 获取设备类型参数
+
+	// 校验设备类型是否合法
+	if !service.ValidateDeviceType(deviceType) {
+		logger.LogError(fmt.Sprintf("Invalid device type '%s' provided in request", deviceType))
+		utils.ErrorResponse(c, 400, "invalid device type", fmt.Sprintf("The device type '%s' is not recognized or supported.", deviceType))
+		return
+	}
+
+	// 获取图片 URL 列表
+	wallpaperURLs, err := service.GetWallpaperURLsFromOSS(bucket, deviceType, appConfig)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed to retrieve wallpapers", fmt.Sprintf("Error: %v", err))
+		return
+	}
+
+	// 返回图片 URL 列表
+	utils.SuccessResponse(c, "Wallpapers retrieved successfully", wallpaperURLs)
 }

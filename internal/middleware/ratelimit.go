@@ -22,6 +22,9 @@ var ipLimiters sync.Map
 // 记录最后访问时间，键为limiterKey
 var ipLastAccess sync.Map
 
+// 记录限流起始时间，键为limiterKey
+var ipBlockedUntil sync.Map
+
 // RateLimit 限流中间件
 func RateLimit(perSecond int) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -32,45 +35,88 @@ func RateLimit(perSecond int) gin.HandlerFunc {
 		}
 
 		key := limiterKey{IP: ip, Rate: perSecond}
+
+		// 确保时区正确加载
+		loc, err := time.LoadLocation("Asia/Shanghai")
+		if err != nil {
+			// 兜底方案：如果无法加载 "Asia/Shanghai"，使用固定时区
+			loc = time.FixedZone("CST", 8*3600) // CST (China Standard Time) UTC+8
+		}
+
+		now := time.Now().In(loc) // 确保 `now` 具有时区信息
+
+		// 检查封禁状态
+		if blockedUntil, exists := ipBlockedUntil.Load(key); exists {
+			blockTime := blockedUntil.(time.Time)
+			if blockTime.IsZero() {
+				blockTime = now
+			} else {
+				blockTime = blockTime.In(loc) // 确保带有时区
+			}
+
+			formattedTime := blockTime.Format("2006-01-02 15:04:05")
+
+			if now.Before(blockTime) {
+				logger.LogInfo(fmt.Sprintf("IP %s is still blocked until %s", ip, formattedTime))
+				c.AbortWithStatusJSON(429, gin.H{"error": "too many requests, please wait until " + formattedTime})
+				return
+			}
+
+			ipBlockedUntil.Delete(key)
+		}
+
 		limiter := getLimiter(key, perSecond)
 
 		if !limiter.Allow() {
-			logger.LogInfo(fmt.Sprintf("Rate limit exceeded for IP: %s (Rate: %d/s)\n", ip, perSecond))
-			c.AbortWithStatusJSON(429, gin.H{"error": "too many requests"})
+			blockTime := now.Add(2 * time.Minute) // 设置封禁时间
+			ipBlockedUntil.Store(key, blockTime)
+
+			formattedTime := blockTime.Format("2006-01-02 15:04:05")
+			logger.LogInfo(fmt.Sprintf("Rate limit exceeded for IP: %s (Rate: %d/s), blocked until %s", ip, perSecond, formattedTime))
+			c.AbortWithStatusJSON(429, gin.H{"error": "too many requests, please wait until " + formattedTime})
 			return
 		}
 
-		logger.LogInfo(fmt.Sprintf("Allowed access for IP: %s (Rate: %d/s)\n", ip, perSecond))
-
-		// 更新最后访问时间（仅允许时更新）
-		ipLastAccess.Store(key, time.Now())
+		logger.LogInfo(fmt.Sprintf("Allowed access for IP: %s (Rate: %d/s)", ip, perSecond))
+		ipLastAccess.Store(key, now) // 存入时确保 `now` 带时区
 		c.Next()
 	}
 }
 
-// 获取或创建限流器
+// 获取或创建限流器（并发安全）
 func getLimiter(key limiterKey, perSecond int) *rate.Limiter {
-	limiter, exists := ipLimiters.Load(key)
-	if !exists {
-		// Burst建议至少为1，防止perSecond过小
-		burst := perSecond * 2
-		if burst < 1 {
-			burst = 1
-		}
-		limiter = rate.NewLimiter(rate.Limit(perSecond), burst)
-		ipLimiters.Store(key, limiter)
+	// 先尝试加载现有限流器
+	if limiter, exists := ipLimiters.Load(key); exists {
+		return limiter.(*rate.Limiter)
 	}
-	return limiter.(*rate.Limiter)
+
+	// 计算合理的突发值
+	burst := perSecond
+	if burst < 1 {
+		burst = 1
+	}
+
+	// 创建新限流器（此时可能有其他goroutine也在创建）
+	newLimiter := rate.NewLimiter(rate.Limit(perSecond), burst)
+
+	// 原子性存储或获取已存在的实例
+	limiter, loaded := ipLimiters.LoadOrStore(key, newLimiter)
+	if loaded {
+		// 其他goroutine已抢先存储，使用已存在的实例
+		return limiter.(*rate.Limiter)
+	}
+	// 当前实例存储成功
+	return newLimiter
 }
 
 // InitRateLimiterCleanup 初始化清理任务
-func InitRateLimiterCleanup() {
-	go cleanupLimiters()
+func InitRateLimiterCleanup(interval time.Duration) {
+	go cleanupLimiters(interval)
 }
 
 // 定期清理过期限流器
-func cleanupLimiters() {
-	ticker := time.NewTicker(10 * time.Minute)
+func cleanupLimiters(interval time.Duration) {
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for range ticker.C {

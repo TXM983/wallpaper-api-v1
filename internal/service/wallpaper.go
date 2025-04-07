@@ -147,7 +147,7 @@ func UploadToOSS(file *multipart.FileHeader, bucket *oss.Bucket, appConfig *conf
 	defer src.Close()
 
 	// 生成上传文件的路径，保持原文件名
-	ossFilePath := fmt.Sprintf(deviceType+"/%s", file.Filename)
+	ossFilePath := fmt.Sprintf("%s/%s", deviceType, file.Filename)
 
 	// 上传文件到OSS
 	err = bucket.PutObject(ossFilePath, src)
@@ -158,6 +158,19 @@ func UploadToOSS(file *multipart.FileHeader, bucket *oss.Bucket, appConfig *conf
 	// 返回OSS文件URL
 	ossFileURL := fmt.Sprintf("%s/%s", appConfig.CDN.BaseURL, ossFilePath)
 	return ossFileURL, nil
+}
+
+// DeleteFromOSS 从OSS中删除指定文件
+func DeleteFromOSS(fileName string, deviceType string, bucket *oss.Bucket) error {
+	// 根据 deviceType 和文件名生成文件的路径
+	ossFilePath := fmt.Sprintf("%s/%s", deviceType, fileName)
+
+	// 删除OSS中的文件
+	err := bucket.DeleteObject(ossFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to delete file '%s' from OSS: %v", ossFilePath, err)
+	}
+	return nil
 }
 
 // AddToWallpaperCache 将图片添加到壁纸缓存中，检查是否存在，如果存在则先删除再添加
@@ -194,4 +207,61 @@ func AddToRandomWallpaperCache(fileName string, rdb *redis.Client, deviceType st
 	}
 
 	return nil
+}
+
+// RemoveFromWallpaperCache 从壁纸缓存中删除指定文件
+func RemoveFromWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
+	// 删除指定文件在壁纸缓存中的所有条目（最多删除 1 个）
+	err := rdb.LRem(context.Background(), "wallpaper:"+deviceType, 0, fileName).Err()
+	if err != nil {
+		return fmt.Errorf("failed to remove image from wallpaper cache list: %v", err)
+	}
+
+	return nil
+}
+
+// RemoveFromRandomWallpaperCache 从随机壁纸缓存中删除指定文件
+func RemoveFromRandomWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
+	// 删除指定文件在随机壁纸缓存中的所有条目（最多删除 1 个）
+	err := rdb.LRem(context.Background(), "wallpaper:cache:"+deviceType, 0, fileName).Err()
+	if err != nil {
+		return fmt.Errorf("failed to remove image from random wallpaper cache list: %v", err)
+	}
+	return nil
+}
+
+// GetWallpaperURLsFromOSS 获取指定 deviceType 下所有图片的 URL
+func GetWallpaperURLsFromOSS(bucket *oss.Bucket, deviceType string, appConfig *config.AppConfig) ([]string, error) {
+
+	// 列举指定目录下的所有图片文件
+	prefix := deviceType + "/"
+	marker := ""
+	var fileURLs []string
+
+	for {
+		// 列出文件（最多 1000 个）
+		result, err := bucket.ListObjects(oss.Prefix(prefix), oss.Marker(marker), oss.MaxKeys(1000))
+		if err != nil {
+			return nil, fmt.Errorf("failed to list objects: %v", err)
+		}
+
+		// 遍历文件结果并构建 URL
+		for _, object := range result.Objects {
+			if strings.HasSuffix(object.Key, ".alist") {
+				continue // 跳过 .alist 文件
+			}
+			fileURL := fmt.Sprintf("%s/%s", appConfig.CDN.BaseURL, object.Key)
+			fileURLs = append(fileURLs, fileURL)
+		}
+
+		// 如果结果还有更多文件，继续列出
+		if result.IsTruncated {
+			marker = result.NextMarker
+		} else {
+			break
+		}
+	}
+
+	// 返回文件 URL 列表
+	return fileURLs, nil
 }

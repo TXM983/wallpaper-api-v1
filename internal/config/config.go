@@ -28,6 +28,10 @@ type AppConfig struct {
 		AccessKeySecret string `mapstructure:"access_key_secret"`
 		Bucket          string `mapstructure:"bucket"`
 	} `mapstructure:"oss"`
+
+	INDEX struct {
+		Password string `mapstructure:"password"`
+	} `mapstructure:"index"`
 }
 
 // LoadConfig 加载配置文件，并支持从环境变量读取
@@ -65,6 +69,7 @@ func LoadConfig() *AppConfig {
 	v.BindEnv("oss.access_key_id", "OSS_ACCESS_KEY_ID")
 	v.BindEnv("oss.access_key_secret", "OSS_ACCESS_KEY_SECRET")
 	v.BindEnv("oss.bucket", "OSS_BUCKET")
+	v.BindEnv("index.password", "PASSWORD")
 
 	// 将配置文件内容反序列化到结构体
 	var cfg AppConfig

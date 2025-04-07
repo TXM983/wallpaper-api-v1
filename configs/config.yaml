@@ -16,3 +16,7 @@ oss:
   access_key_id: ""           #  Access Key ID
   access_key_secret: ""   #  Access Key Secret
   bucket: ""                    # OSS 存储桶名称
+
+
+index:
+  password: ""
