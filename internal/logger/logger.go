@@ -47,24 +47,32 @@ func Init() {
 	// 设置日志级别，默认 DebugLevel
 	Log.SetLevel(logrus.DebugLevel)
 
-	// 使用 Hook 让 logrus 使用 UTC+8
-	Log.AddHook(&localTimeHook{})
+	// 使用 Hook 让 logrus 使用北京时间
+	Log.AddHook(NewLocalTimeHook())
 }
 
-// localTimeHook 自定义 Hook，强制转换日志时间为北京时间
-type localTimeHook struct{}
+// LocalTimeHook 自定义 Hook，强制转换日志时间为北京时间
+type LocalTimeHook struct {
+	loc *time.Location
+}
 
-func (h *localTimeHook) Levels() []logrus.Level {
+// NewLocalTimeHook 创建并返回一个新的 LocalTimeHook 实例
+func NewLocalTimeHook() *LocalTimeHook {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		// 使用固定时区
+		loc = time.FixedZone("CST", 8*60*60)
+	}
+	return &LocalTimeHook{loc: loc}
+}
+
+func (h *LocalTimeHook) Levels() []logrus.Level {
 	return logrus.AllLevels
 }
 
-func (h *localTimeHook) Fire(entry *logrus.Entry) error {
-	loc, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		// 兜底方案：如果无法加载 "Asia/Shanghai"，使用固定时区
-		loc = time.FixedZone("CST", 8*60*60) // CST (China Standard Time) UTC+8
-	}
-	entry.Time = entry.Time.In(loc)
+func (h *LocalTimeHook) Fire(entry *logrus.Entry) error {
+	// 使用缓存的时区进行时间转换
+	entry.Time = entry.Time.In(h.loc)
 	return nil
 }
 
@@ -81,4 +89,27 @@ func LogInfo(format string, args ...interface{}) {
 // LogDebug 记录调试级别日志
 func LogDebug(format string, args ...interface{}) {
 	Log.Debugf(format, args...)
+}
+
+// asyncLogWriter 异步日志记录函数
+func asyncLogWriter(entry *logrus.Entry) {
+	// 将日志记录操作放入 goroutine 中
+	go func() {
+		Log.WithFields(entry.Data).Log(entry.Level, entry.Message)
+	}()
+}
+
+// LogErrorAsync 异步记录错误级别日志
+func LogErrorAsync(format string, args ...interface{}) {
+	go Log.Errorf(format, args...)
+}
+
+// LogInfoAsync 异步记录信息级别日志
+func LogInfoAsync(format string, args ...interface{}) {
+	go Log.Infof(format, args...)
+}
+
+// LogDebugAsync 异步记录调试级别日志
+func LogDebugAsync(format string, args ...interface{}) {
+	go Log.Debugf(format, args...)
 }

@@ -385,11 +385,11 @@ func handleWallpaper(c *gin.Context) {
 	dataType := c.Query("dataType") // 额外的参数，判断返回格式
 
 	// 记录接收到的请求信息
-	logger.LogInfo("Received request for wallpaper, device type: %s, dataType: %s", deviceType, dataType)
+	logger.LogInfoAsync("Received request for wallpaper, device type: %s, dataType: %s", deviceType, dataType)
 
 	// 校验设备类型是否合法
 	if !service.ValidateDeviceType(deviceType) {
-		logger.LogError(fmt.Sprintf("Invalid device type '%s' provided in request", deviceType))
+		logger.LogErrorAsync(fmt.Sprintf("Invalid device type '%s' provided in request", deviceType))
 		utils.ErrorResponse(c, 400, "invalid device type", fmt.Sprintf("The device type '%s' is not recognized or supported.", deviceType))
 		return
 	}
@@ -397,14 +397,14 @@ func handleWallpaper(c *gin.Context) {
 	// 获取随机壁纸
 	filename, err := service.GetRandomWallpaper(rdb, deviceType)
 	if err != nil {
-		logger.LogError(fmt.Sprintf("Error fetching wallpaper for device type %s: %v", deviceType, err))
+		logger.LogErrorAsync(fmt.Sprintf("Error fetching wallpaper for device type %s: %v", deviceType, err))
 		utils.ErrorResponse(c, 500, "server error", fmt.Sprintf("An error occurred while fetching the wallpaper for device type '%s'. Error: %v", deviceType, err))
 		return
 	}
 
 	// 如果没有找到壁纸
 	if filename == "" {
-		logger.LogError(fmt.Sprintf("No wallpaper found for device type %s", deviceType))
+		logger.LogErrorAsync(fmt.Sprintf("No wallpaper found for device type %s", deviceType))
 		utils.ErrorResponse(c, 404, "no wallpaper found", fmt.Sprintf("No wallpapers are available for the device type '%s'.", deviceType))
 		return
 	}
@@ -413,7 +413,7 @@ func handleWallpaper(c *gin.Context) {
 	imageURL := fmt.Sprintf("%s/%s/%s", appConfig.CDN.BaseURL, deviceType, filename)
 
 	// 记录返回的图片链接
-	logger.LogInfo(fmt.Sprintf("Returning wallpaper URL for device type %s: %s", deviceType, imageURL))
+	logger.LogInfoAsync(fmt.Sprintf("Returning wallpaper URL for device type %s: %s", deviceType, imageURL))
 
 	// 判断 dataType 是否为 "json" 或 "url"，决定返回 JSON 还是 302 跳转
 	switch dataType {

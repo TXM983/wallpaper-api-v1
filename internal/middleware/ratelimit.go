@@ -57,7 +57,7 @@ func RateLimit(perSecond int) gin.HandlerFunc {
 			formattedTime := blockTime.Format("2006-01-02 15:04:05")
 
 			if now.Before(blockTime) {
-				logger.LogInfo(fmt.Sprintf("IP %s is still blocked until %s", ip, formattedTime))
+				logger.LogErrorAsync(fmt.Sprintf("IP %s is still blocked until %s", ip, formattedTime))
 				c.AbortWithStatusJSON(429, gin.H{"error": "too many requests, please wait until " + formattedTime})
 				return
 			}
@@ -72,12 +72,12 @@ func RateLimit(perSecond int) gin.HandlerFunc {
 			ipBlockedUntil.Store(key, blockTime)
 
 			formattedTime := blockTime.Format("2006-01-02 15:04:05")
-			logger.LogInfo(fmt.Sprintf("Rate limit exceeded for IP: %s (Rate: %d/s), blocked until %s", ip, perSecond, formattedTime))
+			logger.LogErrorAsync(fmt.Sprintf("Rate limit exceeded for IP: %s (Rate: %d/s), blocked until %s", ip, perSecond, formattedTime))
 			c.AbortWithStatusJSON(429, gin.H{"error": "too many requests, please wait until " + formattedTime})
 			return
 		}
 
-		logger.LogInfo(fmt.Sprintf("Allowed access for IP: %s (Rate: %d/s)", ip, perSecond))
+		logger.LogInfoAsync(fmt.Sprintf("Allowed access for IP: %s (Rate: %d/s)", ip, perSecond))
 		ipLastAccess.Store(key, now) // 存入时确保 `now` 带时区
 		c.Next()
 	}

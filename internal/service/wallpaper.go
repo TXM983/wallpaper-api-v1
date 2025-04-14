@@ -9,6 +9,7 @@ import (
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"math/rand"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
@@ -47,17 +48,17 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 	// 检查缓存是否存在
 	cacheExists, err := rdb.Exists(ctx, keyCache).Result()
 	if err != nil {
-		logger.LogError(fmt.Sprintf("Error checking cache existence for key %s: %v", keyCache, err))
+		logger.LogErrorAsync(fmt.Sprintf("Error checking cache existence for key %s: %v", keyCache, err))
 		return "", err
 	}
-	logger.LogInfo(fmt.Sprintf("Cache existence check for key %s: %v", keyCache, cacheExists))
+	logger.LogInfoAsync(fmt.Sprintf("Cache existence check for key %s: %v", keyCache, cacheExists))
 
 	// 如果缓存为空，则重新填充
 	if cacheExists == 0 {
 		lockValue := uuid.New().String()
 		lockAcquired, err := rdb.SetNX(ctx, lockKey, lockValue, 5*time.Second).Result()
 		if err != nil {
-			logger.LogError(fmt.Sprintf("Error acquiring lock %s: %v", lockKey, err))
+			logger.LogErrorAsync(fmt.Sprintf("Error acquiring lock %s: %v", lockKey, err))
 			return "", err
 		}
 
@@ -80,24 +81,24 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 
 			_, err := sub.ReceiveMessage(ctxTimeout)
 			if err != nil {
-				logger.LogError(fmt.Sprintf("Error waiting for cache refill: %v", err))
+				logger.LogErrorAsync(fmt.Sprintf("Error waiting for cache refill: %v", err))
 				return "", err
 			}
 		}
 	}
 
-	// **使用 BLPOP 代替 RPOP，避免并发竞争失败**
+	// **使用 BLPop 代替 RPOP，避免并发竞争失败**
 	selectedWallpaper, err := rdb.BLPop(ctx, 2*time.Second, keyCache).Result()
 	if errors.Is(err, redis.Nil) {
-		logger.LogInfo("Cache is empty, no wallpaper available.")
+		logger.LogErrorAsync("Cache is empty, no wallpaper available.")
 		return "", fmt.Errorf("no wallpapers available in cache")
 	}
 	if err != nil {
-		logger.LogError(fmt.Sprintf("Error fetching wallpaper from cache for device type %s: %v", deviceType, err))
+		logger.LogErrorAsync(fmt.Sprintf("Error fetching wallpaper from cache for device type %s: %v", deviceType, err))
 		return "", err
 	}
 
-	logger.LogInfo(fmt.Sprintf("Successfully fetched wallpaper: %s", selectedWallpaper[1]))
+	logger.LogInfoAsync(fmt.Sprintf("Successfully fetched wallpaper: %s", selectedWallpaper[1]))
 
 	return selectedWallpaper[1], nil
 }
@@ -108,13 +109,19 @@ func RefillCache(ctx context.Context, rdb *redis.Client, keyOriginal, keyCache s
 	logger.LogInfo(fmt.Sprintf("Refilling cache for key %s from original key %s", keyCache, keyOriginal))
 	wallpapers, err := rdb.LRange(ctx, keyOriginal, 0, -1).Result()
 	if err != nil {
-		logger.LogError(fmt.Sprintf("Error fetching original wallpapers for key %s: %v", keyOriginal, err))
+		logger.LogErrorAsync(fmt.Sprintf("Error fetching original wallpapers for key %s: %v", keyOriginal, err))
 		return err
 	}
 	if len(wallpapers) == 0 {
-		logger.LogError(fmt.Sprintf("No wallpapers available for device type %s", keyOriginal))
+		logger.LogErrorAsync(fmt.Sprintf("No wallpapers available for device type %s", keyOriginal))
 		return fmt.Errorf("no wallpapers available")
 	}
+
+	// 👇 在这里打乱顺序
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r.Shuffle(len(wallpapers), func(i, j int) {
+		wallpapers[i], wallpapers[j] = wallpapers[j], wallpapers[i]
+	})
 
 	// **使用事务保证原子性**
 	tx := rdb.TxPipeline()
@@ -122,11 +129,11 @@ func RefillCache(ctx context.Context, rdb *redis.Client, keyOriginal, keyCache s
 	tx.LPush(ctx, keyCache, stringSliceToInterfaceSlice(wallpapers)...) // **转换类型**
 	_, err = tx.Exec(ctx)
 	if err != nil {
-		logger.LogError(fmt.Sprintf("Failed to refill cache for key %s: %v", keyCache, err))
+		logger.LogErrorAsync(fmt.Sprintf("Failed to refill cache for key %s: %v", keyCache, err))
 		return fmt.Errorf("failed to refill cache: %v", err)
 	}
 
-	logger.LogInfo(fmt.Sprintf("Successfully refilled cache for key %s", keyCache))
+	logger.LogInfoAsync(fmt.Sprintf("Successfully refilled cache for key %s", keyCache))
 	return nil
 }
 
