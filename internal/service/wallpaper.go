@@ -9,15 +9,14 @@ import (
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"math/rand"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
 	"time"
 )
 
-// 工具函数：将 []string 转换为 []interface{}
-func stringSliceToInterfaceSlice(strs []string) []interface{} {
+// StringSliceToInterfaceSlice 工具函数：将 []string 转换为 []interface{}
+func StringSliceToInterfaceSlice(strs []string) []interface{} {
 	result := make([]interface{}, len(strs))
 	for i, v := range strs {
 		result[i] = v
@@ -87,8 +86,8 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 		}
 	}
 
-	// **使用 BLPop 代替 RPOP，避免并发竞争失败**
-	selectedWallpaper, err := rdb.BLPop(ctx, 2*time.Second, keyCache).Result()
+	// **使用 SPop 从 Set 中随机移除并获取壁纸**
+	selectedWallpaper, err := rdb.SPop(ctx, keyCache).Result()
 	if errors.Is(err, redis.Nil) {
 		logger.LogErrorAsync("Cache is empty, no wallpaper available.")
 		return "", fmt.Errorf("no wallpapers available in cache")
@@ -98,16 +97,16 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 		return "", err
 	}
 
-	logger.LogInfoAsync(fmt.Sprintf("Successfully fetched wallpaper: %s", selectedWallpaper[1]))
+	logger.LogInfoAsync(fmt.Sprintf("Successfully fetched wallpaper: %s", selectedWallpaper))
 
-	return selectedWallpaper[1], nil
+	return selectedWallpaper, nil
 }
 
 // RefillCache **重置缓存**
 func RefillCache(ctx context.Context, rdb *redis.Client, keyOriginal, keyCache string) error {
-	// 获取原始壁纸
+	// 获取原始壁纸（从 Set 中取）
 	logger.LogInfo(fmt.Sprintf("Refilling cache for key %s from original key %s", keyCache, keyOriginal))
-	wallpapers, err := rdb.LRange(ctx, keyOriginal, 0, -1).Result()
+	wallpapers, err := rdb.SMembers(ctx, keyOriginal).Result()
 	if err != nil {
 		logger.LogErrorAsync(fmt.Sprintf("Error fetching original wallpapers for key %s: %v", keyOriginal, err))
 		return err
@@ -117,16 +116,14 @@ func RefillCache(ctx context.Context, rdb *redis.Client, keyOriginal, keyCache s
 		return fmt.Errorf("no wallpapers available")
 	}
 
-	// 👇 在这里打乱顺序
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	r.Shuffle(len(wallpapers), func(i, j int) {
-		wallpapers[i], wallpapers[j] = wallpapers[j], wallpapers[i]
-	})
-
 	// **使用事务保证原子性**
 	tx := rdb.TxPipeline()
-	tx.Del(ctx, keyCache)                                               // 清空旧缓存
-	tx.LPush(ctx, keyCache, stringSliceToInterfaceSlice(wallpapers)...) // **转换类型**
+	tx.Del(ctx, keyCache) // 清空旧缓存
+
+	// 将 wallpapers 转换为 []interface{}，用于 SAdd
+	interfaceList := StringSliceToInterfaceSlice(wallpapers)
+	tx.SAdd(ctx, keyCache, interfaceList...) // 添加到 Set 缓存中
+
 	_, err = tx.Exec(ctx)
 	if err != nil {
 		logger.LogErrorAsync(fmt.Sprintf("Failed to refill cache for key %s: %v", keyCache, err))
@@ -182,17 +179,16 @@ func DeleteFromOSS(fileName string, deviceType string, bucket *oss.Bucket) error
 
 // AddToWallpaperCache 将图片添加到壁纸缓存中，检查是否存在，如果存在则先删除再添加
 func AddToWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
-	// 删除列表中已存在的该图片（最多删除 1 个）
-	// LRem: 如果存在，删除列表中的旧图片
-	err := rdb.LRem(context.Background(), "wallpaper:"+deviceType, 0, fileName).Err()
+	// 删除 Set 中已存在的该图片
+	err := rdb.SRem(context.Background(), "wallpaper:"+deviceType, fileName).Err()
 	if err != nil {
-		return fmt.Errorf("failed to remove image from wallpaper cache list: %v", err)
+		return fmt.Errorf("failed to remove image from wallpaper cache set: %v", err)
 	}
 
-	// 将图片URL添加到壁纸缓存的Redis列表中
-	err = rdb.LPush(context.Background(), "wallpaper:"+deviceType, fileName).Err()
+	// 将图片URL添加到壁纸缓存的Redis Set 中
+	err = rdb.SAdd(context.Background(), "wallpaper:"+deviceType, fileName).Err()
 	if err != nil {
-		return fmt.Errorf("failed to add image to wallpaper cache list: %v", err)
+		return fmt.Errorf("failed to add image to wallpaper cache set: %v", err)
 	}
 
 	return nil
@@ -200,17 +196,16 @@ func AddToWallpaperCache(fileName string, rdb *redis.Client, deviceType string) 
 
 // AddToRandomWallpaperCache 将图片添加到随机壁纸缓存中，检查是否存在，如果存在则先删除再添加
 func AddToRandomWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
-	// 删除列表中已存在的该图片（最多删除 1 个）
-	// LRem: 如果存在，删除列表中的旧图片
-	err := rdb.LRem(context.Background(), "wallpaper:cache:"+deviceType, 0, fileName).Err()
+	// 删除 Set 中已存在的该图片
+	err := rdb.SRem(context.Background(), "wallpaper:cache:"+deviceType, fileName).Err()
 	if err != nil {
-		return fmt.Errorf("failed to remove image from random wallpaper cache list: %v", err)
+		return fmt.Errorf("failed to remove image from random wallpaper cache set: %v", err)
 	}
 
-	// 将图片URL添加到随机壁纸缓存的Redis列表中
-	err = rdb.LPush(context.Background(), "wallpaper:cache:"+deviceType, fileName).Err()
+	// 将图片URL添加到随机壁纸缓存的Redis Set 中
+	err = rdb.SAdd(context.Background(), "wallpaper:cache:"+deviceType, fileName).Err()
 	if err != nil {
-		return fmt.Errorf("failed to add image to random wallpaper cache list: %v", err)
+		return fmt.Errorf("failed to add image to random wallpaper cache set: %v", err)
 	}
 
 	return nil
@@ -218,10 +213,10 @@ func AddToRandomWallpaperCache(fileName string, rdb *redis.Client, deviceType st
 
 // RemoveFromWallpaperCache 从壁纸缓存中删除指定文件
 func RemoveFromWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
-	// 删除指定文件在壁纸缓存中的所有条目（最多删除 1 个）
-	err := rdb.LRem(context.Background(), "wallpaper:"+deviceType, 0, fileName).Err()
+	// 从 Set 中删除指定文件
+	err := rdb.SRem(context.Background(), "wallpaper:"+deviceType, fileName).Err()
 	if err != nil {
-		return fmt.Errorf("failed to remove image from wallpaper cache list: %v", err)
+		return fmt.Errorf("failed to remove image from wallpaper cache set: %v", err)
 	}
 
 	return nil
@@ -229,10 +224,10 @@ func RemoveFromWallpaperCache(fileName string, rdb *redis.Client, deviceType str
 
 // RemoveFromRandomWallpaperCache 从随机壁纸缓存中删除指定文件
 func RemoveFromRandomWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
-	// 删除指定文件在随机壁纸缓存中的所有条目（最多删除 1 个）
-	err := rdb.LRem(context.Background(), "wallpaper:cache:"+deviceType, 0, fileName).Err()
+	// 从 Set 中删除指定文件
+	err := rdb.SRem(context.Background(), "wallpaper:cache:"+deviceType, fileName).Err()
 	if err != nil {
-		return fmt.Errorf("failed to remove image from random wallpaper cache list: %v", err)
+		return fmt.Errorf("failed to remove image from random wallpaper cache set: %v", err)
 	}
 	return nil
 }

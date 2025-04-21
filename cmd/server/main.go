@@ -140,15 +140,6 @@ func initOSS() {
 	// 需要向阿里云OSS配置触发事件，上传或者删除事件将触发处理函数
 }
 
-// **工具函数：将 []string 转换为 []interface{}**
-func stringSliceToInterfaceSlice(strs []string) []interface{} {
-	result := make([]interface{}, len(strs))
-	for i, v := range strs {
-		result[i] = v
-	}
-	return result
-}
-
 func resetCache(rdb *redis.Client, bucket *oss.Bucket) error {
 	ctx := context.Background()
 
@@ -231,7 +222,8 @@ func initRandomWallpaperCache(rdb *redis.Client, deviceType string) error {
 		}
 	}
 
-	cacheLength, err := rdb.LLen(ctx, keyCache).Result()
+	// 获取缓存中 Set 的长度
+	cacheLength, err := rdb.SCard(ctx, keyCache).Result() // 使用 SCard 获取 Set 长度
 	if err != nil {
 		logger.LogError(fmt.Sprintf("Error getting cache length for key %s: %v", keyCache, err))
 		return err
@@ -272,11 +264,16 @@ func populateWallpaperList(ctx context.Context, rdb *redis.Client, bucket *oss.B
 		}
 	}
 
-	// **批量存入 Redis**
+	// **批量存入 Redis（改为 Set 存储）**
 	if len(wallpaperList) > 0 {
-		key := "wallpaper:" + strings.TrimSuffix(prefix, "/") // "wallpaper:pc" or "wallpaper:mobile"
-		if err := rdb.LPush(ctx, key, stringSliceToInterfaceSlice(wallpaperList)...).Err(); err != nil {
-			return totalCount, fmt.Errorf("failed to push wallpapers to Redis for %s: %v", prefix, err)
+		key := "wallpaper:" + strings.TrimSuffix(prefix, "/") // "wallpaper:pc" 或 "wallpaper:mobile"
+
+		// 将 wallpaperList 转换为 []interface{}
+		interfaceList := service.StringSliceToInterfaceSlice(wallpaperList)
+
+		// 使用 SAdd 存储到 Redis Set
+		if err := rdb.SAdd(ctx, key, interfaceList...).Err(); err != nil {
+			return totalCount, fmt.Errorf("failed to add wallpapers to Redis Set for %s: %v", prefix, err)
 		}
 	}
 
@@ -368,13 +365,13 @@ func setupRouter() *gin.Engine {
 	})
 
 	// 图片上传接口
-	r.POST("/upload", middleware.RateLimit(2), uploadWallpapers)
+	r.POST("/upload", middleware.RateLimit(5), uploadWallpapers)
 
 	// 图片删除接口
-	r.GET("/delete", middleware.RateLimit(2), deleteWallpaper)
+	r.POST("/delete", middleware.RateLimit(5), deleteWallpaper)
 
 	// 查询指定deviceType下的所有图片
-	r.GET("/selectImages", middleware.RateLimit(2), getWallpapers)
+	r.GET("/selectImages", middleware.RateLimit(5), getWallpapers)
 
 	return r
 }
@@ -433,8 +430,8 @@ func handleWallpaper(c *gin.Context) {
 // 上传图片接口
 func uploadWallpapers(c *gin.Context) {
 
-	deviceType := c.PostForm("deviceType") // 额外的参数，判断返回格式
-	password := c.PostForm("password")     // 上传图片时需要验证密码
+	deviceType := c.PostForm("type")   // 额外的参数，判断返回格式
+	password := c.PostForm("password") // 额外的参数，判断返回格式
 
 	if password != appConfig.INDEX.Password {
 		utils.ErrorResponse(c, 400, "invalid password", "密码错误，请输入正确的密码")
@@ -499,7 +496,7 @@ func uploadWallpapers(c *gin.Context) {
 func deleteWallpaper(c *gin.Context) {
 	// Define request structure
 	type DeleteWallpaperRequest struct {
-		DeviceType string `json:"deviceType" binding:"required"`
+		DeviceType string `json:"type" binding:"required"`
 		FileName   string `json:"fileName" binding:"required"`
 		Password   string `json:"password" binding:"required"`
 	}
@@ -549,7 +546,7 @@ func deleteWallpaper(c *gin.Context) {
 
 // 查询壁纸的接口
 func getWallpapers(c *gin.Context) {
-	deviceType := c.Query("deviceType") // 获取设备类型参数
+	deviceType := c.Query("type") // 获取设备类型参数
 
 	// 校验设备类型是否合法
 	if !service.ValidateDeviceType(deviceType) {
