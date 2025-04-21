@@ -13,7 +13,7 @@
 </a>
   <!-- Golang Badge -->
   <a href="https://golang.org/">
-    <img src="https://img.shields.io/badge/Go-1.18-blue" alt="Golang" />
+    <img src="https://img.shields.io/badge/Go-1.20-blue" alt="Golang" />
   </a>
   <!-- Redis Badge -->
   <a href="https://redis.io/">
