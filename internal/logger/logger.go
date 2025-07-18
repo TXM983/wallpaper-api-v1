@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/natefinch/lumberjack"
 	"github.com/sirupsen/logrus"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -29,14 +30,17 @@ func Init() {
 		os.Exit(1)
 	}
 
-	// 设置日志轮转
-	Log.SetOutput(&lumberjack.Logger{
+	// 创建 lumberjack.Logger 对象，用于文件日志轮转
+	fileLogger := &lumberjack.Logger{
 		Filename:   logFilePath, // 日志文件路径
 		MaxSize:    10,          // 每个日志文件的最大大小（MB）
 		MaxBackups: 3,           // 保留3个备份日志文件
 		MaxAge:     28,          // 日志文件保留28天
 		Compress:   true,        // 启用日志压缩
-	})
+	}
+
+	// 使用 io.MultiWriter 同时写到控制台和文件
+	Log.SetOutput(io.MultiWriter(os.Stdout, fileLogger))
 
 	// 设置日志格式
 	Log.SetFormatter(&logrus.TextFormatter{
