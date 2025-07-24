@@ -44,15 +44,12 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 	lockKey := "lock:wallpaper:" + deviceType    // Redis 分布式锁
 	channel := "wallpaper_channel:" + deviceType // Pub/Sub 频道
 
-	// 检查缓存是否存在
 	cacheExists, err := rdb.Exists(ctx, keyCache).Result()
 	if err != nil {
 		logger.LogErrorAsync(fmt.Sprintf("Error checking cache existence for key %s: %v", keyCache, err))
 		return "", err
 	}
-	logger.LogInfoAsync(fmt.Sprintf("Cache existence check for key %s: %v", keyCache, cacheExists))
 
-	// 如果缓存为空，则重新填充
 	if cacheExists == 0 {
 		lockValue := uuid.New().String()
 		lockAcquired, err := rdb.SetNX(ctx, lockKey, lockValue, 5*time.Second).Result()
@@ -62,7 +59,6 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 		}
 
 		if lockAcquired {
-			// **使用 Lua 确保释放锁的原子性**
 			defer unlockScript.Run(ctx, rdb, []string{lockKey}, lockValue)
 
 			err = RefillCache(ctx, rdb, keyOriginal, keyCache)
@@ -71,7 +67,6 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 			}
 			rdb.Publish(ctx, channel, "done") // 通知其他请求缓存已填充
 		} else {
-			// **等待填充完成，最多等 3 秒，防止一直卡住**
 			sub := rdb.Subscribe(ctx, channel)
 			defer sub.Close()
 
@@ -86,7 +81,6 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 		}
 	}
 
-	// **使用 SPop 从 Set 中随机移除并获取壁纸**
 	selectedWallpaper, err := rdb.SPop(ctx, keyCache).Result()
 	if errors.Is(err, redis.Nil) {
 		logger.LogErrorAsync("Cache is empty, no wallpaper available.")
@@ -97,14 +91,11 @@ func GetRandomWallpaper(rdb *redis.Client, deviceType string) (string, error) {
 		return "", err
 	}
 
-	logger.LogInfoAsync(fmt.Sprintf("Successfully fetched wallpaper: %s", selectedWallpaper))
-
 	return selectedWallpaper, nil
 }
 
 // RefillCache **重置缓存**
 func RefillCache(ctx context.Context, rdb *redis.Client, keyOriginal, keyCache string) error {
-	// 获取原始壁纸（从 Set 中取）
 	logger.LogInfo(fmt.Sprintf("Refilling cache for key %s from original key %s", keyCache, keyOriginal))
 	wallpapers, err := rdb.SMembers(ctx, keyOriginal).Result()
 	if err != nil {
@@ -116,11 +107,9 @@ func RefillCache(ctx context.Context, rdb *redis.Client, keyOriginal, keyCache s
 		return fmt.Errorf("no wallpapers available")
 	}
 
-	// **使用事务保证原子性**
 	tx := rdb.TxPipeline()
 	tx.Del(ctx, keyCache) // 清空旧缓存
 
-	// 将 wallpapers 转换为 []interface{}，用于 SAdd
 	interfaceList := StringSliceToInterfaceSlice(wallpapers)
 	tx.SAdd(ctx, keyCache, interfaceList...) // 添加到 Set 缓存中
 
@@ -136,40 +125,33 @@ func RefillCache(ctx context.Context, rdb *redis.Client, keyOriginal, keyCache s
 
 // IsImageFile 检查文件是否是图片
 func IsImageFile(filename string) bool {
-	// 简单检查文件扩展名是否为图片格式
 	ext := strings.ToLower(filepath.Ext(filename))
 	return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" || ext == ".bmp" || ext == ".webp"
 }
 
 // UploadToOSS 将图片上传到OSS并返回URL
 func UploadToOSS(file *multipart.FileHeader, bucket *oss.Bucket, appConfig *config.AppConfig, deviceType string) (string, error) {
-	// 打开上传的文件
 	src, err := file.Open()
 	if err != nil {
 		return "", fmt.Errorf("failed to open file: %v", err)
 	}
 	defer src.Close()
 
-	// 生成上传文件的路径，保持原文件名
 	ossFilePath := fmt.Sprintf("%s/%s", deviceType, file.Filename)
 
-	// 上传文件到OSS
 	err = bucket.PutObject(ossFilePath, src)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload file to OSS: %v", err)
 	}
 
-	// 返回OSS文件URL
 	ossFileURL := fmt.Sprintf("%s/%s", appConfig.CDN.BaseURL, ossFilePath)
 	return ossFileURL, nil
 }
 
 // DeleteFromOSS 从OSS中删除指定文件
 func DeleteFromOSS(fileName string, deviceType string, bucket *oss.Bucket) error {
-	// 根据 deviceType 和文件名生成文件的路径
 	ossFilePath := fmt.Sprintf("%s/%s", deviceType, fileName)
 
-	// 删除OSS中的文件
 	err := bucket.DeleteObject(ossFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to delete file '%s' from OSS: %v", ossFilePath, err)
@@ -179,13 +161,11 @@ func DeleteFromOSS(fileName string, deviceType string, bucket *oss.Bucket) error
 
 // AddToWallpaperCache 将图片添加到壁纸缓存中，检查是否存在，如果存在则先删除再添加
 func AddToWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
-	// 删除 Set 中已存在的该图片
 	err := rdb.SRem(context.Background(), "wallpaper:"+deviceType, fileName).Err()
 	if err != nil {
 		return fmt.Errorf("failed to remove image from wallpaper cache set: %v", err)
 	}
 
-	// 将图片URL添加到壁纸缓存的Redis Set 中
 	err = rdb.SAdd(context.Background(), "wallpaper:"+deviceType, fileName).Err()
 	if err != nil {
 		return fmt.Errorf("failed to add image to wallpaper cache set: %v", err)
@@ -196,13 +176,11 @@ func AddToWallpaperCache(fileName string, rdb *redis.Client, deviceType string) 
 
 // AddToRandomWallpaperCache 将图片添加到随机壁纸缓存中，检查是否存在，如果存在则先删除再添加
 func AddToRandomWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
-	// 删除 Set 中已存在的该图片
 	err := rdb.SRem(context.Background(), "wallpaper:cache:"+deviceType, fileName).Err()
 	if err != nil {
 		return fmt.Errorf("failed to remove image from random wallpaper cache set: %v", err)
 	}
 
-	// 将图片URL添加到随机壁纸缓存的Redis Set 中
 	err = rdb.SAdd(context.Background(), "wallpaper:cache:"+deviceType, fileName).Err()
 	if err != nil {
 		return fmt.Errorf("failed to add image to random wallpaper cache set: %v", err)
@@ -213,7 +191,6 @@ func AddToRandomWallpaperCache(fileName string, rdb *redis.Client, deviceType st
 
 // RemoveFromWallpaperCache 从壁纸缓存中删除指定文件
 func RemoveFromWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
-	// 从 Set 中删除指定文件
 	err := rdb.SRem(context.Background(), "wallpaper:"+deviceType, fileName).Err()
 	if err != nil {
 		return fmt.Errorf("failed to remove image from wallpaper cache set: %v", err)
@@ -224,7 +201,6 @@ func RemoveFromWallpaperCache(fileName string, rdb *redis.Client, deviceType str
 
 // RemoveFromRandomWallpaperCache 从随机壁纸缓存中删除指定文件
 func RemoveFromRandomWallpaperCache(fileName string, rdb *redis.Client, deviceType string) error {
-	// 从 Set 中删除指定文件
 	err := rdb.SRem(context.Background(), "wallpaper:cache:"+deviceType, fileName).Err()
 	if err != nil {
 		return fmt.Errorf("failed to remove image from random wallpaper cache set: %v", err)
@@ -235,19 +211,16 @@ func RemoveFromRandomWallpaperCache(fileName string, rdb *redis.Client, deviceTy
 // GetWallpaperURLsFromOSS 获取指定 deviceType 下所有图片的 URL
 func GetWallpaperURLsFromOSS(bucket *oss.Bucket, deviceType string, appConfig *config.AppConfig) ([]string, error) {
 
-	// 列举指定目录下的所有图片文件
 	prefix := deviceType + "/"
 	marker := ""
 	var fileURLs []string
 
 	for {
-		// 列出文件（最多 1000 个）
 		result, err := bucket.ListObjects(oss.Prefix(prefix), oss.Marker(marker), oss.MaxKeys(1000))
 		if err != nil {
 			return nil, fmt.Errorf("failed to list objects: %v", err)
 		}
 
-		// 遍历文件结果并构建 URL
 		for _, object := range result.Objects {
 			if strings.HasSuffix(object.Key, ".alist") {
 				continue // 跳过 .alist 文件
@@ -256,7 +229,6 @@ func GetWallpaperURLsFromOSS(bucket *oss.Bucket, deviceType string, appConfig *c
 			fileURLs = append(fileURLs, fileURL)
 		}
 
-		// 如果结果还有更多文件，继续列出
 		if result.IsTruncated {
 			marker = result.NextMarker
 		} else {
@@ -264,6 +236,5 @@ func GetWallpaperURLsFromOSS(bucket *oss.Bucket, deviceType string, appConfig *c
 		}
 	}
 
-	// 返回文件 URL 列表
 	return fileURLs, nil
 }
