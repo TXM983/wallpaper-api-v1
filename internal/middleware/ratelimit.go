@@ -44,6 +44,10 @@ func RateLimit(perSecond int, blockDuration time.Duration) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
+
+		// 打印当前访问 IP
+		logger.LogInfoAsync(fmt.Sprintf("Request from IP: %s", ip))
+
 		if perSecond <= 0 {
 			c.AbortWithStatusJSON(400, gin.H{"error": "invalid rate limit configuration"})
 			return
