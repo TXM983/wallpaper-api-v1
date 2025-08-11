@@ -43,8 +43,8 @@ func main() {
 	// 初始化阿里云 OSS
 	initOSS()
 
-	// 启动后台清理任务
-	middleware.InitRateLimiterCleanup(30 * time.Minute)
+	// 30分钟执行一次清理任务，过期时间15分钟
+	middleware.InitRateLimiterCleanup(30*time.Minute, 15*time.Minute)
 
 	// **确保 Redis 和 OSS 初始化成功**
 	if rdb == nil {
@@ -106,7 +106,6 @@ func initRedis() {
 	if err != nil {
 
 		logger.LogError("Failed to connect to Redis: %v\n", err)
-		fmt.Printf("Failed to connect to Redis: %v\n", err)
 		os.Exit(1) // 如果 Redis 连接失败，退出程序
 	}
 
@@ -120,14 +119,12 @@ func initOSS() {
 	ossClient, err = oss.New(appConfig.OSS.Endpoint, appConfig.OSS.AccessKeyID, appConfig.OSS.AccessKeySecret)
 	if err != nil {
 		logger.LogError("Failed to connect to OSS: %v\n", err)
-		fmt.Printf("Failed to connect to OSS: %v\n", err)
 		os.Exit(1)
 	}
 
 	bucket, err = ossClient.Bucket(appConfig.OSS.Bucket)
 	if err != nil {
 		logger.LogError("Failed to get OSS bucket: %v\n", err)
-		fmt.Printf("Failed to get OSS bucket: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -161,7 +158,6 @@ func resetCache(rdb *redis.Client, bucket *oss.Bucket) error {
 	}
 
 	logger.LogInfo("Wallpaper cache initialized successfully. PC count: %d, Mobile count: %d\n", pcCount, mobileCount)
-	fmt.Printf("Wallpaper cache initialized successfully. PC count: %d, Mobile count: %d\n", pcCount, mobileCount)
 
 	return nil
 }
@@ -183,7 +179,6 @@ func refreshCacheByDevice(rdb *redis.Client, bucket *oss.Bucket, deviceType stri
 	}
 
 	logger.LogInfo("Wallpaper cache initialized successfully. %v count: %d\n", deviceType, deviceTypeCount)
-	fmt.Printf("Wallpaper cache initialized successfully. %v count: %d\n", deviceType, deviceTypeCount)
 
 	return nil
 }
@@ -446,7 +441,6 @@ func uploadWallpapers(c *gin.Context) {
 
 // 删除指定 deviceType 和 图片名称的壁纸接口
 func deleteWallpaper(c *gin.Context) {
-	// Define request structure
 	type DeleteWallpaperRequest struct {
 		DeviceType string `json:"type" binding:"required"`
 		FileName   string `json:"fileName" binding:"required"`
